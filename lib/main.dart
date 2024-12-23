@@ -1,4 +1,6 @@
+// ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
+import 'dart:async';
 
 void main() {
   runApp(const MyApp());
@@ -11,51 +13,55 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: DragAndDropPage(),
+      home: _DragAndDropLists(),
     );
   }
 }
 
-class DragAndDropPage extends StatefulWidget {
-  @override
-  _DragAndDropPageState createState() => _DragAndDropPageState();
+class ColorPalette { // defining the main colors
+  static Color hoverList1Color = Colors.blue.withOpacity(0.2);
+  static Color hoverList2Color = Colors.green.withOpacity(0.2);
+
+  static Color dragItemList1Color = Colors.blue;
+  static Color dragItemList2Color = Colors.green;
+  static Color hoveredItemColor = Colors.grey.withOpacity(0.5);
+  static Color highlightedItemColor = Colors.yellow.withOpacity(0.5);
 }
 
-class _DragAndDropPageState extends State<DragAndDropPage> {
-  // Lista de elementos originales
-  final List<Map<String, dynamic>> items = [
-    {"nombre": "Tirafondos 3,9x6,5", "valor1": 10, "valor2": 20},
-    {"nombre": "Tornillo roscam. 3,0x20", "valor1": 15, "valor2": 30},
-    {"nombre": "Tornillo M4x8", "valor1": 20, "valor2": 25},
-    {"nombre": "Junta estanqueidad EPDM", "valor1": 25, "valor2": 35},
+class _DragAndDropLists extends StatefulWidget {
+  @override
+  _DragAndDropListsState createState() => _DragAndDropListsState();
+}
+
+class _DragAndDropListsState extends State<_DragAndDropLists> {
+  final List<Map<String, dynamic>> list1Items = [
+    {"name": "Item 1", "value1": 10, "value2": 20},
+    {"name": "Item 2", "value1": 15, "value2": 30},
+    {"name": "Item 3", "value1": 20, "value2": 25},
+    {"name": "Item 4", "value1": 25, "value2": 35},
+    {"name": "Item 5", "value1": 10, "value2": 20},
+    {"name": "Item 6", "value1": 15, "value2": 30},
+    {"name": "Item 7", "value1": 20, "value2": 25},
+    {"name": "Item 8", "value1": 25, "value2": 35},
   ];
 
-  // Lista para los elementos seleccionados
-  final List<Map<String, dynamic>> selectedItems = [];
+  final List<Map<String, dynamic>> list2Items = [];
 
-  // Calcular sumas de columnas numéricas
-  int get totalValor1 => selectedItems.fold(0, (sum, item) => sum + (item["valor1"] as int));
-  int get totalValor2 => selectedItems.fold(0, (sum, item) => sum + (item["valor2"] as int));
+  Map<String, dynamic>? list2HoveredItem; // item is hover when a drag is placed on it
+  Map<String, dynamic>? newList2Item; // last item recent add in a list
+  bool isHoveringList1 = false;
+  bool isHoveringList2 = false;
 
-  Map<String, dynamic>? hoveredItem;
-  Map<String, dynamic>? highlightedItem;
-
-  void _highlightItem(Map<String, dynamic> item) {
+  void _highlightLastNewItem(Map<String, dynamic> item) { // will highlight the new and last item added to the list
     setState(() {
-      highlightedItem = item;
+      newList2Item = item;
     });
-    Future.delayed(const Duration(seconds: 1), () {
+    Timer(const Duration(seconds: 3, milliseconds: 500), () { // highlight duration
       setState(() {
-        highlightedItem = null;
+        if (newList2Item == item) {
+          newList2Item = null;
+        }
       });
-    });
-  }
-
-  void _moveItemInList(int oldIndex, int newIndex, List<Map<String, dynamic>> list) {
-    setState(() {
-      if (newIndex > oldIndex) newIndex -= 1;
-      final item = list.removeAt(oldIndex);
-      list.insert(newIndex, item);
     });
   }
 
@@ -63,53 +69,70 @@ class _DragAndDropPageState extends State<DragAndDropPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Drag & Drop en Flutter"),
+        title: const Text("Drag & Drop Lists Flutter"),
       ),
       body: Column(
         children: [
           Expanded(
             child: Row(
               children: [
-                // Lista original
+                // List 1
                 Expanded(
                   flex: 1,
                   child: Column(
                     children: [
-                      const Text("Lista original", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      const Text("List 1", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                       Expanded(
                         child: DragTarget<Map<String, dynamic>>(
-                          onWillAccept: (data) => !items.contains(data),
+                          onWillAccept: (data) {
+                            if(!list1Items.contains(data)){
+                              setState(() {
+                                isHoveringList1 = true;
+                              });
+                            }
+
+                            return !list1Items.contains(data);
+                          },
                           onAccept: (data) {
                             setState(() {
-                              items.add(data);
-                              selectedItems.remove(data);
+                              list1Items.add(data);
+                              list2Items.remove(data);
+                              isHoveringList1 = false;
+                            });
+                          },
+                          onLeave: (data) {
+                            setState(() {
+                              isHoveringList1 = false;
                             });
                           },
                           builder: (context, candidateData, rejectedData) {
-                            return ListView.builder(
-                              itemCount: items.length,
-                              itemBuilder: (context, index) {
-                                final item = items[index];
-                                return Draggable<Map<String, dynamic>>(
-                                  data: item,
-                                  feedback: Material(
-                                    child: Container(
-                                      padding: const EdgeInsets.all(8.0),
-                                      color: Colors.blue,
-                                      child: Text(item["nombre"], style: const TextStyle(color: Colors.white)),
+                            return Container(
+                              color: isHoveringList1 ? ColorPalette.hoverList1Color : Colors.transparent,
+                              child: ListView.builder(
+                                itemCount: list1Items.length,
+                                itemBuilder: (context, index) {
+                                  final item = list1Items[index];
+                                  return Draggable<Map<String, dynamic>>(
+                                    data: item,
+                                    feedback: Material(
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8.0),
+                                        color: ColorPalette.dragItemList1Color,
+                                        child: Text(item["name"], style: const TextStyle(color: Colors.white)),
+                                      ),
                                     ),
-                                  ),
-                                  childWhenDragging: Opacity(
-                                    opacity: 0.5,
+                                    childWhenDragging: Opacity(
+                                      opacity: 0.5,
+                                      child: ListTile(
+                                        title: Text(item["name"]),
+                                      ),
+                                    ),
                                     child: ListTile(
-                                      title: Text(item["nombre"]),
+                                      title: Text(item["name"]),
                                     ),
-                                  ),
-                                  child: ListTile(
-                                    title: Text(item["nombre"]),
-                                  ),
-                                );
-                              },
+                                  );
+                                },
+                              )
                             );
                           },
                         ),
@@ -117,78 +140,104 @@ class _DragAndDropPageState extends State<DragAndDropPage> {
                     ],
                   ),
                 ),
-                // Nueva lista con área de drop extendida
+                // List 2
                 Expanded(
                   flex: 1,
                   child: Column(
                     children: [
-                      const Text("Nueva lista", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      const Text("List 2", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                       Expanded(
                         child: DragTarget<Map<String, dynamic>>(
-                          onWillAccept: (data) => !selectedItems.contains(data),
+                          onWillAccept: (data) {
+                            if(!list2Items.contains(data)){
+                              setState(() {
+                                isHoveringList2 = true;
+                              });
+                            }
+
+                            return !list2Items.contains(data);
+                          },
                           onAccept: (data) {
                             setState(() {
-                              selectedItems.add(data);
-                              items.remove(data);
-                              _highlightItem(data);
+                              list2Items.add(data);
+                              list1Items.remove(data);
+                              _highlightLastNewItem(data);
+                              isHoveringList2 = false;
+                            });
+                          },
+                          onLeave: (data) {
+                            setState(() {
+                              isHoveringList2 = false;
                             });
                           },
                           builder: (context, candidateData, rejectedData) {
-                            return ReorderableListView.builder(
-                              onReorder: (oldIndex, newIndex) => _moveItemInList(oldIndex, newIndex, selectedItems),
-                              itemBuilder: (context, index) {
-                                final item = selectedItems[index];
-                                final isHighlighted = item == highlightedItem;
-                                final isHovered = item == hoveredItem;
-                                return DragTarget<Map<String, dynamic>>(
-                                  key: ValueKey(item), // Añadido: Key única
-                                  onWillAccept: (data) {
-                                    setState(() {
-                                      hoveredItem = item;
-                                    });
-                                    return true;
-                                  },
-                                  onLeave: (data) {
-                                    setState(() {
-                                      hoveredItem = null;
-                                    });
-                                  },
-                                  onAccept: (data) {
-                                    setState(() {
-                                      selectedItems.remove(data);
-                                      selectedItems.insert(index, data);
-                                      items.remove(data);
-                                      hoveredItem = null;
-                                      _highlightItem(data);
-                                    });
-                                  },
-                                  builder: (context, candidateData, rejectedData) {
-                                    return Draggable<Map<String, dynamic>>(
-                                      data: item,
-                                      feedback: Material(
+                            return Container(
+                              color: isHoveringList2 ? ColorPalette.hoverList2Color : Colors.transparent,
+                              child: ListView.builder(
+                                itemBuilder: (context, index) {
+                                  final item = list2Items[index];
+                                  final isHighlighted = item == newList2Item;
+                                  final itemIsHovered = item == list2HoveredItem;
+                                  final isLastItem = index == list2Items.length - 1;
+
+                                  return DragTarget<Map<String, dynamic>>(
+                                    key: ValueKey(item), // Añadido: Key única
+                                    onWillAccept: (data) {
+                                      setState(() {
+                                        list2HoveredItem = item;
+                                      });
+                                      return true;
+                                    },
+                                    onLeave: (data) {
+                                      setState(() {
+                                        list2HoveredItem = null;
+                                      });
+                                    },
+                                    onAccept: (data) {
+                                      setState(() {
+                                        list2Items.remove(data);
+                                        list2Items.insert(index, data);
+                                        list1Items.remove(data);
+                                        list2HoveredItem = null;
+                                        _highlightLastNewItem(data);
+                                      });
+                                    },
+                                    builder: (context, candidateData, rejectedData) {
+                                      return Draggable<Map<String, dynamic>>(
+                                        data: item,
+                                        feedback: Material(
+                                          child: Container(
+                                            padding: const EdgeInsets.all(8.0),
+                                            color: ColorPalette.dragItemList2Color,
+                                            child: Text(item["name"], style: const TextStyle(color: Colors.white)),
+                                          ),
+                                        ),
+                                        childWhenDragging: Opacity(
+                                          opacity: 0.5,
+                                          child: ListTile(
+                                            title: Text(item["name"]),
+                                          ),
+                                        ),
                                         child: Container(
-                                          padding: const EdgeInsets.all(8.0),
-                                          color: Colors.green,
-                                          child: Text(item["nombre"], style: const TextStyle(color: Colors.white)),
+                                          decoration: BoxDecoration(
+                                            color: itemIsHovered ? ColorPalette.hoveredItemColor
+                                              : isHighlighted ? ColorPalette.highlightedItemColor : Colors.transparent,
+                                            border: isLastItem && itemIsHovered || isLastItem && isHoveringList2
+                                                ? const Border(bottom: BorderSide(color: Colors.black, width: 2)) 
+                                                : itemIsHovered 
+                                                    ? const Border(top: BorderSide(color: Colors.black, width: 2))
+                                                    : const Border(top: BorderSide(color: Colors.transparent, width: 0)),
+                                          ),
+                                          child: ListTile(
+                                            title: Text(item["name"]),
+                                          ),
                                         ),
-                                      ),
-                                      childWhenDragging: Opacity(
-                                        opacity: 0.5,
-                                        child: ListTile(
-                                          title: Text(item["nombre"]),
-                                        ),
-                                      ),
-                                      child: Container(
-                                        color: isHighlighted ? Colors.yellow.withOpacity(0.5) : isHovered ? Colors.grey.withOpacity(0.5) : Colors.transparent,
-                                        child: ListTile(
-                                          title: Text(item["nombre"]),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                );
-                              },
-                              itemCount: selectedItems.length,
+                                      );
+                                    },
+                                  );
+                                },
+                                itemCount: list2Items.length,
+                              )
                             );
                           },
                         ),
